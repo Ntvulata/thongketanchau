@@ -10,8 +10,8 @@
   // =====================
   const DEFAULT_DATA = {
     site: {
-      parentName: 'CƠ QUAN CHỦ QUẢN',
-      name: 'ĐƠN VỊ ABC',
+      parentName: 'THỐNG KÊ TỈNH TÂY NINH',
+      name: 'THỐNG KÊ CƠ SỞ TÂN CHÂU',
       slogan: 'Đoàn kết - Kỷ cương - Sáng tạo - Hiệu quả',
       bannerImage: '',
       logoImage: ''
@@ -27,7 +27,7 @@
       ]
     },
     contact: {
-      address: '123 Đường ABC, Phường XYZ, Quận 1, TP. Hồ Chí Minh',
+      address: 'Ấp Tây Thạnh, xã Tân Châu, tỉnh Tây Ninh',
       phone: '(028) 1234 5678',
       fax: '(028) 1234 5679',
       email: 'lienhe@donviabc.gov.vn',
