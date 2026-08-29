@@ -1073,6 +1073,45 @@
         showNotification('Đã khôi phục dữ liệu gốc');
         renderPage();
       }
+    },
+    exportAppJs: function() {
+      if (!confirm('Tính năng này sẽ tạo ra file app.js chứa toàn bộ dữ liệu bạn đã sửa để bạn ghi đè lên file cũ và đưa lên GitHub. Bạn có muốn tiếp tục?')) return;
+      
+      showNotification('Đang tạo file...', 'info');
+      
+      fetch('app.js')
+        .then(function(res) { return res.text(); })
+        .then(function(text) {
+          var currentData = Storage.getData();
+          var dataString = JSON.stringify(currentData, null, 2);
+          
+          // Regex to replace DEFAULT_DATA block
+          // Matches from "const DEFAULT_DATA = {" up to the next section "// ====================="
+          var regex = /(const\s+DEFAULT_DATA\s*=\s*\{)[\s\S]*?(};\s*\n\s*\/\/\s*=====================)/;
+          var replacement = '$1\n' + dataString.substring(1, dataString.length - 1) + '$2';
+          
+          var newAppJs = text.replace(regex, replacement);
+          
+          if (newAppJs === text) {
+            alert('Không thể tạo file tự động. Bạn vui lòng chụp màn hình báo lỗi này cho kỹ thuật.');
+            return;
+          }
+          
+          var blob = new Blob([newAppJs], { type: 'application/javascript;charset=utf-8' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'app.js';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          showNotification('✅ Đã tải file app.js! Hãy ghi đè file này vào thư mục của bạn rồi up lên GitHub.');
+        })
+        .catch(function(err) {
+          alert('Lỗi khi tải file: ' + err.message);
+        });
     }
   };
 
