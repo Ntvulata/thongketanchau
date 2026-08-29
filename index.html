@@ -75,6 +75,7 @@
       <p>👤 Đã đăng nhập: <strong>Admin</strong></p>
       <button class="btn-logout" id="logoutBtn">Đăng xuất</button>
       <button class="btn-logout" style="margin-top:5px;background:#f39c12;" onclick="App.resetData()">🔄 Khôi phục dữ liệu gốc</button>
+      <button class="btn-logout" style="margin-top:5px;background:#27ae60;" onclick="App.exportAppJs()" title="Tải file chứa toàn bộ nội dung đã sửa để up lên GitHub">📥 Tải file up GitHub (app.js)</button>
     </div>
   </div>
 
@@ -101,6 +102,11 @@
   <input type="file" id="hiddenFileInput" class="hidden-file-input" accept="image/*">
 
   <!-- ===== JAVASCRIPT ===== -->
+  <!-- Firebase App (the core Firebase SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <!-- Firebase Firestore -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  
   <script src="app.js"></script>
 
 </body>

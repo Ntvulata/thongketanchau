@@ -10,8 +10,8 @@
   // =====================
   const DEFAULT_DATA = {
     site: {
-      parentName: 'THỐNG KÊ TỈNH TÂY NINH',
-      name: 'THỐNG KÊ CƠ SỞ TÂN CHÂU',
+      parentName: 'CƠ QUAN CHỦ QUẢN',
+      name: 'ĐƠN VỊ ABC',
       slogan: 'Đoàn kết - Kỷ cương - Sáng tạo - Hiệu quả',
       bannerImage: '',
       logoImage: ''
@@ -27,7 +27,7 @@
       ]
     },
     contact: {
-      address: 'Ấp Tây Thạnh, xã Tân Châu, tỉnh Tây Ninh',
+      address: '123 Đường ABC, Phường XYZ, Quận 1, TP. Hồ Chí Minh',
       phone: '(028) 1234 5678',
       fax: '(028) 1234 5679',
       email: 'lienhe@donviabc.gov.vn',
@@ -78,37 +78,52 @@
   };
 
   // =====================
-  // STORAGE
+  // FIREBASE CONFIG & STORAGE
   // =====================
+  const firebaseConfig = {
+    apiKey: "AIzaSyDo2xOa5HU7wOxAumWcVh3Ljjtg2kWUYeI",
+    authDomain: "thongketanchau.firebaseapp.com",
+    projectId: "thongketanchau",
+    storageBucket: "thongketanchau.firebasestorage.app",
+    messagingSenderId: "785825674313",
+    appId: "1:785825674313:web:d50b9a3e53a667d6b47b98",
+    measurementId: "G-QH3WK5PN0F"
+  };
+
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  const db = firebase.firestore();
+
+  let appState = null;
+
   const Storage = {
-    get(key) {
-      try {
-        const data = localStorage.getItem('dvWeb_' + key);
-        return data ? JSON.parse(data) : null;
-      } catch(e) {
-        return null;
-      }
-    },
-    set(key, value) {
-      try {
-        localStorage.setItem('dvWeb_' + key, JSON.stringify(value));
-      } catch(e) {
-        console.error('Storage error:', e);
-      }
-    },
     getData() {
-      let data = this.get('data');
-      if (!data) {
-        data = JSON.parse(JSON.stringify(DEFAULT_DATA));
-        this.set('data', data);
-      }
-      return data;
+      // Returns local copy immediately so synchronous code still works.
+      // At startup, this will be populated from Firestore before initial render.
+      return appState || JSON.parse(JSON.stringify(DEFAULT_DATA));
     },
     saveData(data) {
-      this.set('data', data);
+      // Deep clone to remove any undefined properties that Firestore rejects
+      var cleanData = JSON.parse(JSON.stringify(data));
+      appState = cleanData; 
+      db.collection('website').doc('data').set(cleanData)
+        .catch(function(error) {
+          console.error("Lỗi khi lưu lên Firebase:", error);
+          if (error.code === 'permission-denied') {
+             showNotification('LỖI: Chưa cấp quyền! Bạn phải vào Firebase sửa lại tab Rules.', 'error');
+             alert('Dữ liệu của bạn chưa được lưu lên đám mây vì bạn chưa sửa Quy tắc (Rules) trong Firebase.\nHãy làm lại Bước 5: dán mã rules vào Firebase rồi bấm Publish!');
+          } else {
+             showNotification('Lỗi lưu dữ liệu: ' + error.message, 'error');
+          }
+        });
     },
     resetData() {
-      this.set('data', JSON.parse(JSON.stringify(DEFAULT_DATA)));
+      appState = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      db.collection('website').doc('data').set(appState)
+        .catch(function(error) {
+          console.error("Lỗi khi reset Firebase:", error);
+        });
     }
   };
 
@@ -1004,8 +1019,27 @@
     // Listen for hash changes
     window.addEventListener('hashchange', renderPage);
 
-    // Initial render
-    renderPage();
+    // Initial render - Wait for Firebase
+    var contentEl = document.getElementById('page-content');
+    contentEl.innerHTML = '<div style="text-align:center;padding:100px;color:#666;">Đang đồng bộ dữ liệu đám mây...</div>';
+
+    db.collection('website').doc('data').onSnapshot(function(doc) {
+      if (doc.exists) {
+        appState = doc.data();
+        // Ensure arrays exist if empty in DB
+        if (!appState.news) appState.news = [];
+        if (!appState.documents) appState.documents = [];
+        if (!appState.schedule) appState.schedule = [];
+        if (!appState.about.values) appState.about.values = [];
+      } else {
+        appState = JSON.parse(JSON.stringify(DEFAULT_DATA));
+        db.collection('website').doc('data').set(appState);
+      }
+      renderPage();
+    }, function(error) {
+      console.error("Lỗi Firestore:", error);
+      alert("Lỗi tải dữ liệu. Vui lòng kiểm tra quyền truy cập Firestore (Rules) trong Firebase console.");
+    });
   }
 
   // =====================
