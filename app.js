@@ -669,38 +669,79 @@
       var reader = new FileReader();
 
       reader.onload = function(e) {
-        var base64 = e.target.result;
-        var data = Storage.getData();
-
-        // Parse field path and set value
-        var parts = field.split('.');
-        if (parts[0] === 'news') {
-          var newsId = parseInt(parts[1]);
-          for (var i = 0; i < data.news.length; i++) {
-            if (data.news[i].id === newsId) {
-              data.news[i].image = base64;
-              break;
+        var img = new Image();
+        img.onload = function() {
+          var canvas = document.createElement('canvas');
+          var ctx = canvas.getContext('2d');
+          
+          // Max dimensions
+          var MAX_WIDTH = 1200;
+          var MAX_HEIGHT = 1200;
+          var width = img.width;
+          var height = img.height;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
             }
           }
-        } else {
-          var obj = data;
-          for (var k = 0; k < parts.length - 1; k++) {
-            obj = obj[parts[k]];
+          
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG 0.7 to safely fit within 1MB Firebase limit
+          var compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          
+          var data = Storage.getData();
+          var parts = field.split('.');
+          
+          if (parts[0] === 'news') {
+            var newsId = parseInt(parts[1]);
+            for (var i = 0; i < data.news.length; i++) {
+              if (data.news[i].id === newsId) {
+                data.news[i].image = compressedBase64;
+                break;
+              }
+            }
+          } else {
+            var obj = data;
+            for (var k = 0; k < parts.length - 1; k++) {
+              obj = obj[parts[k]];
+            }
+            obj[parts[parts.length - 1]] = compressedBase64;
           }
-          obj[parts[parts.length - 1]] = base64;
-        }
 
-        Storage.saveData(data);
-        showNotification('Đã đổi ảnh! Đang cập nhật...');
-        renderPage();
+          Storage.saveData(data);
+          showNotification('Đã đổi ảnh thành công!');
+          renderPage();
+        };
+        img.src = e.target.result;
       };
-
+      
       reader.readAsDataURL(file);
       event.target.value = '';
     },
 
     saveAll: function() {
       var data = Storage.getData();
+      var originalData = JSON.parse(JSON.stringify(data)); // Snapshot for comparison
+
+      // Helper to get value from object path
+      function getVal(obj, parts) {
+        var res = obj;
+        for (var k = 0; k < parts.length; k++) {
+          if (res == null) return null;
+          res = res[parts[k]];
+        }
+        return res;
+      }
 
       // Collect all editable text fields
       var editables = document.querySelectorAll('[data-editable="text"]');
@@ -717,27 +758,41 @@
           value = el.textContent;
         }
 
-        // Handle nested paths
+        // Check if value actually changed compared to original data
+        var origVal = '';
         if (parts[0] === 'news') {
           var newsId = parseInt(parts[1]);
-          for (var j = 0; j < data.news.length; j++) {
-            if (data.news[j].id === newsId) {
-              data.news[j][parts[2]] = value;
-              break;
-            }
+          for (var j = 0; j < originalData.news.length; j++) {
+            if (originalData.news[j].id === newsId) origVal = originalData.news[j][parts[2]];
           }
         } else if (parts[0] === 'about' && parts[1] === 'values') {
           var idx = parseInt(parts[2]);
-          if (data.about.values[idx]) {
-            data.about.values[idx][parts[3]] = value;
-          }
+          if (originalData.about.values[idx]) origVal = originalData.about.values[idx][parts[3]];
         } else {
-          var obj = data;
-          for (var k = 0; k < parts.length - 1; k++) {
-            if (!obj[parts[k]]) obj[parts[k]] = {};
-            obj = obj[parts[k]];
+          origVal = getVal(originalData, parts);
+        }
+
+        // Only update if the user actually edited this specific element's text
+        // (This prevents duplicate elements like site.name from overwriting each other with old values)
+        if (value !== origVal && origVal !== null && origVal !== undefined) {
+          // Compare loosely because HTML entities might differ slightly, but for textContent it's usually exact.
+          // Wait, if it changed, update it.
+          if (parts[0] === 'news') {
+            var nId = parseInt(parts[1]);
+            for (var m = 0; m < data.news.length; m++) {
+              if (data.news[m].id === nId) data.news[m][parts[2]] = value;
+            }
+          } else if (parts[0] === 'about' && parts[1] === 'values') {
+            var vIdx = parseInt(parts[2]);
+            if (data.about.values[vIdx]) data.about.values[vIdx][parts[3]] = value;
+          } else {
+            var obj = data;
+            for (var k = 0; k < parts.length - 1; k++) {
+              if (!obj[parts[k]]) obj[parts[k]] = {};
+              obj = obj[parts[k]];
+            }
+            obj[parts[parts.length - 1]] = value;
           }
-          obj[parts[parts.length - 1]] = value;
         }
       }
 
